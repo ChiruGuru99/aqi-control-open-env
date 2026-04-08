@@ -1,0 +1,63 @@
+{
+  "delhi": {
+    "city_name": "Delhi",
+    "state": "Delhi",
+    "ncap_target_reduction_pct": 40,
+    "ncap_baseline_pm25": 150,
+    "source_shares": {
+      "vehicular": 0.38,
+      "construction": 0.18,
+      "industrial": 0.12,
+      "residential": 0.08,
+      "background": 0.24
+    },
+    "compliance_multiplier": 0.85,
+    "enforcement_capacity": 0.80,
+    "notes": "High vehicle density, strong enforcement infra, moderate industrial base",
+    "weekend_traffic_factor": 0.82,
+    "inversion_prone": true,
+    "festival_sensitivity": 1.2
+  },
+  "lucknow": {
+    "city_name": "Lucknow",
+    "state": "Uttar Pradesh",
+    "ncap_target_reduction_pct": 40,
+    "ncap_baseline_pm25": 130,
+    "source_shares": {
+      "vehicular": 0.32,
+      "construction": 0.22,
+      "industrial": 0.16,
+      "residential": 0.10,
+      "background": 0.20
+    },
+    "compliance_multiplier": 0.70,
+    "enforcement_capacity": 0.60,
+    "notes": "Significant construction dust, weaker enforcement, growing industrial",
+    "weekend_traffic_factor": 0.88,
+    "inversion_prone": true,
+    "festival_sensitivity": 1.3
+  },
+  "patna": {
+    "city_name": "Patna",
+    "state": "Bihar",
+    "ncap_target_reduction_pct": 40,
+    "ncap_baseline_pm25": 140,
+    "source_shares": {
+      "vehicular": 0.28,
+      "construction": 0.20,
+      "industrial": 0.18,
+      "residential": 0.12,
+      "background": 0.22
+    },
+    "compliance_multiplier": 0.60,
+    "enforcement_capacity": 0.50,
+    "notes": "Higher industrial share, limited enforcement, biomass burning influence",
+    "weekend_traffic_factor": 0.90,
+    "inversion_prone": true,
+    "festival_sensitivity": 1.1
+  },
+  "_meta": {
+    "description": "Per-city scenario parameters for the AQI Control Environment. Source shares are configurable scenario parameters, not empirical claims. Compliance multiplier (0-1) models how effectively interventions translate to real-world reductions. Festival sensitivity scales PM2.5 amplification during Diwali/events.",
+    "source": "Simplified profiles inspired by CPCB/NCAP city reports. Not empirical source-apportionment data."
+  }
+}
