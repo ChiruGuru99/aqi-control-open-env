@@ -5,7 +5,7 @@ colorFrom: gray
 colorTo: blue
 sdk: docker
 app_port: 8000
-tags: [openenv]
+tags: [openenv, openenv-hackathon, aqi]
 ---
 
 # 🌬️ AQI Control Environment
