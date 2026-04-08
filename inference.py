@@ -9,9 +9,12 @@ from openai import OpenAI
 
 # ── Configuration ────────────────────────────────────────────────────────
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN = os.environ.get("HF_TOKEN", "") or os.environ.get("OPENAI_API_KEY", "dummy")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+# Optional - if you use from_docker_image():
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 ENV_URL = os.environ.get("ENV_URL", "http://localhost:8000")
 
 # Kaggle typically requests specific tasks via environment variables mapping
