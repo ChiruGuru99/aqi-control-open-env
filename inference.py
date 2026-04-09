@@ -18,8 +18,8 @@ LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 ENV_URL = os.environ.get("ENV_URL", "http://localhost:8000")
 
 # Kaggle typically requests specific tasks via environment variables mapping
-TASK_NAME = os.environ.get("AQI_TASK", "easy")
-BENCHMARK = os.environ.get("AQI_BENCHMARK", "aqi_control_env")
+TASK_NAME = os.getenv("OPENENV_TASK", os.getenv("AQI_TASK", "easy"))
+BENCHMARK = os.getenv("AQI_BENCHMARK", "aqi_control_env")
 
 MAX_STEPS = 35  # Episode max steps, typically 30 + buffer
 SUCCESS_SCORE_THRESHOLD = 0.5  # Example threshold for success booleans
@@ -158,12 +158,18 @@ def main() -> None:
             log_step(step=step, action=action_str, reward=reward, done=done, error=error)
 
             if done or error:
-                # Optionally parse grader percentage internally if we want to pipe it to score
-                grader_scores = obs.get("observation", {}).get("metadata", {}).get("grader_scores", {})
+                # Securely parse grader percentage directly from the observation fields
+                grader_scores = obs_inner.get("grader_scores", {})
                 
-                # Default generic normalization (avoid division by zero)
-                score = sum(rewards) / MAX_POSSIBLE_SCORE if MAX_POSSIBLE_SCORE > 0 else 0.0
-                score = min(max(score, 0.0), 1.0)
+                if TASK_NAME in grader_scores:
+                    score = grader_scores[TASK_NAME]
+                else:
+                    # Fallback default generic normalization 
+                    score = sum(rewards) / MAX_POSSIBLE_SCORE if MAX_POSSIBLE_SCORE > 0 else 0.0
+                    
+                # Absolutely guarantee strict exclusive bounds (0 < score < 1)
+                score = max(0.0001, min(score, 0.9999))
+                
                 success = score >= SUCCESS_SCORE_THRESHOLD
                 break
 

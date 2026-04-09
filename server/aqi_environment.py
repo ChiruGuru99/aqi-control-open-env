@@ -451,4 +451,5 @@ class AQIControlEnvironment(Environment):
             done=self._done,
             reward=reward,
             metadata={"grader_scores": dict(self._grader_scores)},
+            grader_scores=dict(self._grader_scores),
         )

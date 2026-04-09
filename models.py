@@ -176,3 +176,7 @@ class AQIObservation(Observation):
         description="Multi-city observations for medium/hard tasks {city: {...}}",
     )
     message: str = Field(default="", description="Human-readable status message")
+    grader_scores: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Terminal grader scores mapped by task_id."
+    )
