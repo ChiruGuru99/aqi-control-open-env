@@ -59,6 +59,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    # Using .3f for score as per the provided sample code snippet
     logger.info(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}")
 
 
@@ -156,6 +157,8 @@ def main() -> None:
             error = None
             try:
                 obs = env_step(action)
+                # Refresh inner observation to get latest grader state
+                obs_inner = obs.get("observation", obs)
             except Exception as e:
                 error = str(e)
             
@@ -169,22 +172,22 @@ def main() -> None:
             log_step(step=step, action=action_str, reward=reward, done=done, error=error)
 
             if done or error:
-                # Securely parse grader percentage directly from the observation fields
-                grader_scores = obs_inner.get("grader_scores", {})
-                
-                if TASK_NAME in grader_scores:
-                    score = grader_scores[TASK_NAME]
-                else:
-                    # Fallback default generic normalization 
-                    score = sum(rewards) / MAX_POSSIBLE_SCORE if MAX_POSSIBLE_SCORE > 0 else 0.0
-                    
-                # Absolutely guarantee strict exclusive bounds (0 < score < 1)
-                # Use the same safe floor/ceiling as graders to avoid external
-                # validators rounding tiny values to 0.0 or 1.0.
-                score = max(0.001, min(score, 0.999))
-                
-                success = score >= SUCCESS_SCORE_THRESHOLD
                 break
+
+        # ── Final Scoring (Outside Loop) ──────────────────────────────────
+        
+        # Securely parse grader percentage from the latest observation fields
+        grader_scores = obs_inner.get("grader_scores", {})
+        
+        if TASK_NAME in grader_scores:
+            score = grader_scores[TASK_NAME]
+        else:
+            # Fallback default generic normalization 
+            score = sum(rewards) / MAX_POSSIBLE_SCORE if MAX_POSSIBLE_SCORE > 0 else 0.0
+            
+        # Guarantee strict exclusive bounds (0 < score < 1)
+        score = max(0.001, min(score, 0.999))
+        success = score >= SUCCESS_SCORE_THRESHOLD
 
     except Exception as e:
         print(f"[DEBUG] Runtime Exception: {e}\n{traceback.format_exc()}", file=sys.stderr)
