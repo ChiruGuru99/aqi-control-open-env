@@ -429,10 +429,11 @@ class AQIControlEnvironment(Environment):
 
         # When episode is done, ensure the reward field carries the grader score
         # (strictly in (0, 1)) so the submission validator sees a valid score.
+        # Use a slightly larger floor to avoid external rounding to 0.0.
         final_reward = reward
         if self._done and self._grader_scores:
             grader_score = list(self._grader_scores.values())[0]
-            final_reward = max(0.0001, min(float(grader_score), 0.9999))
+            final_reward = max(0.001, min(float(grader_score), 0.999))
 
         return AQIObservation(
             day=self._current_day,

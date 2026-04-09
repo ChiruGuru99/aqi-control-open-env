@@ -100,7 +100,9 @@ def grade_easy(trajectory: List[Dict[str, Any]], total_days: int) -> Tuple[float
         "component_severe": round(severe_score, 4),
     }
 
-    return max(0.0001, min(round(score, 4), 0.9999)), details
+    # Ensure returned score is strictly between 0 and 1 and stays
+    # safely above common rounding thresholds used by validators.
+    return max(0.001, min(round(score, 4), 0.999)), details
 
 
 def grade_medium(
@@ -145,7 +147,8 @@ def grade_medium(
 
     score = avg_score * 0.30 + severe_score * 0.30 + efficiency * 0.20 + equity_score * 0.20
 
-    return max(0.0001, min(round(score, 4), 0.9999)), {
+    # Keep scores within (0, 1) and avoid values that round to 0.0.
+    return max(0.001, min(round(score, 4), 0.999)), {
         "avg_reduction_pct": round(avg_reduction * 100, 1),
         "severe_reduction_pct": round(severe_reduction * 100, 1),
         "efficiency_score": round(efficiency, 4),
@@ -203,7 +206,7 @@ def grade_hard(
     details["budget_spent"] = round(budget_spent, 2)
     details["budget_total"] = round(budget_total, 2)
 
-    return max(0.0001, min(round(score, 4), 0.9999)), details
+    return max(0.001, min(round(score, 4), 0.999)), details
 
 def compute_city_equity_penalty(city_trajectories: Dict[str, List[Dict[str, Any]]], current_day: int) -> float:
     """Computes a daily penalty if cities are highly unequal in health consequences.

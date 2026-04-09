@@ -168,7 +168,9 @@ def main() -> None:
                     score = sum(rewards) / MAX_POSSIBLE_SCORE if MAX_POSSIBLE_SCORE > 0 else 0.0
                     
                 # Absolutely guarantee strict exclusive bounds (0 < score < 1)
-                score = max(0.0001, min(score, 0.9999))
+                # Use the same safe floor/ceiling as graders to avoid external
+                # validators rounding tiny values to 0.0 or 1.0.
+                score = max(0.001, min(score, 0.999))
                 
                 success = score >= SUCCESS_SCORE_THRESHOLD
                 break
