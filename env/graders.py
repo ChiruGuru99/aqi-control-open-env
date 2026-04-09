@@ -116,7 +116,7 @@ def grade_medium(
         - 20% City equity (penalizes uneven health outcomes)
     """
     if not city_trajectories:
-        return 0.0, {"error": "empty trajectories"}
+        return 0.0001, {"error": "empty trajectories"}
 
     city_metrics = {}
     health_scores = []

@@ -333,8 +333,15 @@ class AQIControlEnvironment(Environment):
             scores = " | ".join(f"{k}: {v:.4f}" for k, v in self._grader_scores.items())
             msg_parts.append(f"EPISODE COMPLETE. Scores: {scores}")
 
+        # When episode is done, use the grader score as the reward
+        # so the submission validator sees a valid [0, 1] score
+        if self._done and self._grader_scores:
+            final_reward = list(self._grader_scores.values())[0]
+        else:
+            final_reward = round(total_reward, 2)
+
         return self._make_observation(
-            reward=round(total_reward, 2),
+            reward=final_reward,
             message=" | ".join(msg_parts),
         )
 
@@ -420,6 +427,13 @@ class AQIControlEnvironment(Environment):
         acts = self._activity_levels.get(self._primary_city, {})
         budget_remaining = self._budget_total - self._budget_spent if self._budget_total > 0 else -1.0
 
+        # When episode is done, ensure the reward field carries the grader score
+        # (strictly in (0, 1)) so the submission validator sees a valid score.
+        final_reward = reward
+        if self._done and self._grader_scores:
+            grader_score = list(self._grader_scores.values())[0]
+            final_reward = max(0.0001, min(float(grader_score), 0.9999))
+
         return AQIObservation(
             day=self._current_day,
             date=today.get("date", ""),
@@ -449,7 +463,7 @@ class AQIControlEnvironment(Environment):
             cities_data=cities_obs,
             message=message,
             done=self._done,
-            reward=reward,
+            reward=final_reward,
             metadata={"grader_scores": dict(self._grader_scores)},
             grader_scores=dict(self._grader_scores),
         )
