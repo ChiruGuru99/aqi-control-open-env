@@ -4,6 +4,7 @@ import sys
 import traceback
 from typing import Any, Dict, List, Optional
 
+import logging
 import requests
 from openai import OpenAI
 
@@ -30,25 +31,35 @@ client = OpenAI(
     base_url=API_BASE_URL,
 )
 
+# Dedicated logger for structured stdout markers. Use a bare message
+# formatter so the output matches the exact required [START]/[STEP]/[END]
+# line formats (no timestamps or level names).
+logger = logging.getLogger("inference_logger")
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
 
 # ── Stdout Formatting ────────────────────────────────────────────────────
 
 def log_start(task: str, env: str, model: str) -> None:
-    print(f"[START] task={task} env={env} model={model}", flush=True)
+    logger.info(f"[START] task={task} env={env} model={model}")
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     error_val = error if error else "null"
     done_val = str(done).lower()
     # Replace newlines in action string to comply with Kaggle's single-line constraint
     action_clean = action.replace("\n", " ").replace("\r", "")
-    print(
-        f"[STEP] step={step} action={action_clean} reward={reward:.2f} done={done_val} error={error_val}",
-        flush=True,
+    logger.info(
+        f"[STEP] step={step} action={action_clean} reward={reward:.2f} done={done_val} error={error_val}"
     )
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+    logger.info(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}")
 
 
 # ── Environment Helpers ─────────────────────────────────────────────────
