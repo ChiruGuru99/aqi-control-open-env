@@ -75,7 +75,7 @@ def _compute_core_metrics(trajectory: List[Dict[str, Any]]) -> Dict[str, float]:
     }
 
 
-def grade_easy(trajectory: List[Dict[str, Any]], total_days: int) -> Tuple[float, Dict[str, Any]]:
+def grade_easy(trajectory: List[Dict[str, Any]], **kwargs) -> Tuple[float, Dict[str, Any]]:
     """Grade Task 1 (Easy): Single city, 30 days.
 
     Scoring:
@@ -106,9 +106,7 @@ def grade_easy(trajectory: List[Dict[str, Any]], total_days: int) -> Tuple[float
 
 
 def grade_medium(
-    city_trajectories: Dict[str, List[Dict[str, Any]]],
-    total_days: int,
-) -> Tuple[float, Dict[str, Any]]:
+    city_trajectories: Dict[str, List[Dict[str, Any]]], **kwargs) -> Tuple[float, Dict[str, Any]]:
     """Grade Task 2 (Medium): Multiple cities, includes Diwali.
 
     Scoring:
@@ -158,11 +156,7 @@ def grade_medium(
 
 
 def grade_hard(
-    city_trajectories: Dict[str, List[Dict[str, Any]]],
-    total_days: int,
-    budget_total: float,
-    budget_spent: float,
-) -> Tuple[float, Dict[str, Any]]:
+    city_trajectories: Dict[str, List[Dict[str, Any]]], **kwargs) -> Tuple[float, Dict[str, Any]]:
     """Grade Task 3 (Hard): Multi-city with budget constraints.
 
     Scoring:
