@@ -60,4 +60,4 @@ obs, reward, done, info = await env.step(action)
 
 ---
 **License**: Apache-2.0
-**Built for**: OpenEnv Agentic Benchmarking Competition
+**Built for**: OpenEnv-Hackathon

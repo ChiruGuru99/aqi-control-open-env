@@ -9,14 +9,14 @@ tasks:
     name: "Single City AQI Management"
     description: "Single city (Delhi), 30-day winter. Basic AQI management."
     difficulty: easy
-    grader: "env.graders:grade_easy"
+    grader: "aqi_control_env.env.graders:grade_easy"
   - id: medium
     name: "Multi-City AQI Coordination"
     description: "Two cities including Diwali spike. Multi-city coordination and equity."
     difficulty: medium
-    grader: "env.graders:grade_medium"
+    grader: "aqi_control_env.env.graders:grade_medium"
   - id: hard
     name: "Budget-Constrained AQI Control"
     description: "Three cities, budget-constrained, festival events, fatigue management."
     difficulty: hard
-    grader: "env.graders:grade_hard"
+    grader: "aqi_control_env.env.graders:grade_hard"
