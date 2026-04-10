@@ -30,4 +30,4 @@ packages = ["aqi_control_env", "aqi_control_env.env", "aqi_control_env.server"]
 package-dir = { "aqi_control_env" = ".", "aqi_control_env.env" = "env", "aqi_control_env.server" = "server" }
 
 [tool.setuptools.package-data]
-"aqi_control_env" = ["data/**/*.json", "openenv.yaml"]
+"aqi_control_env" = ["data/**/*.json", "openenv.yaml", "env/*.py", "server/*.py"]
