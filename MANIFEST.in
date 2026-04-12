@@ -1,0 +1,8 @@
+include openenv.yaml
+include LICENSE
+include README.md
+include TECHNICAL_SPEC.md
+include SPACE_GUIDE.md
+recursive-include data *.json
+recursive-include env *.py
+recursive-include server *.py
