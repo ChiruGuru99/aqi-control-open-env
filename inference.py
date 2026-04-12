@@ -131,37 +131,38 @@ def call_llm(prompt: str) -> Dict[str, Any]:
 
 # ── Main Loop ────────────────────────────────────────────────────────────
 
-def main() -> None:
-    history: List[str] = []
+def run_task(task_name: str) -> None:
+    """
+    Run one task end-to-end and emit [START]/[STEP]/[END] logs.
+    """
     rewards: List[float] = []
     steps_taken = 0
     score = 0.0
     success = False
 
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+    log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        obs = env_reset(TASK_NAME)
-        
+        obs = env_reset(task_name)
+
         for step in range(1, MAX_STEPS + 1):
             obs_inner = obs.get("observation", obs)
-            
+
             # 1. Provide Context to Agent
             prompt = build_prompt(obs)
-            
+
             # 2. Get Action
             action = call_llm(prompt)
             action_str = json.dumps(action)
-            
+
             # 3. Step Environment
             error = None
             try:
                 obs = env_step(action)
-                # Refresh inner observation to get latest grader state
                 obs_inner = obs.get("observation", obs)
             except Exception as e:
                 error = str(e)
-            
+
             reward = obs.get("reward", 0.0) or 0.0
             done = obs.get("done", False) or obs_inner.get("done", False)
 
@@ -169,24 +170,20 @@ def main() -> None:
             steps_taken = step
 
             # 4. Standard STDOUT Emission
-            log_step(step=step, action=action_str, reward=reward, done=done, error=error)
+            log_step(step=step, action=json.dumps(action), reward=reward, done=done, error=error)
 
             if done or error:
                 break
 
-        # ── Final Scoring (Outside Loop) ──────────────────────────────────
-        
-        # Securely parse grader percentage from the latest observation fields
+        # Final scoring: prefer grader-provided score, else normalize cumulative reward.
         grader_scores = obs_inner.get("grader_scores", {})
-        
-        if TASK_NAME in grader_scores:
-            score = grader_scores[TASK_NAME]
+        if task_name in grader_scores:
+            score = float(grader_scores[task_name])
         else:
-            # Fallback default generic normalization 
             score = sum(rewards) / MAX_POSSIBLE_SCORE if MAX_POSSIBLE_SCORE > 0 else 0.0
-            
-        # Guarantee strict exclusive bounds (0 < score < 1)
-        score = max(0.001, min(score, 0.999))
+
+        # Ensure score is a float in [0.0, 1.0]
+        score = float(max(0.0, min(score, 1.0)))
         success = score >= SUCCESS_SCORE_THRESHOLD
 
     except Exception as e:
@@ -194,6 +191,18 @@ def main() -> None:
     finally:
         env_close()
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+
+
+def main() -> None:
+    # If a task was explicitly requested via env vars, run just that task.
+    explicit = ("OPENENV_TASK" in os.environ) or ("AQI_TASK" in os.environ)
+    if explicit:
+        tasks_to_run = [TASK_NAME]
+    else:
+        tasks_to_run = ["easy", "medium", "hard"]
+
+    for t in tasks_to_run:
+        run_task(t)
 
 
 if __name__ == "__main__":
