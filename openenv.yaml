@@ -9,11 +9,6 @@ tasks:
     name: "Single City AQI Management"
     description: "Single city (Delhi), 30-day winter. Basic AQI management."
     difficulty: easy
-    grader: "env.graders:grade_easy"
-  - id: easy
-    name: "Single City AQI Management"
-    description: "Single city (Delhi), 30-day winter. Basic AQI management."
-    difficulty: easy
     grader: "aqi_control_env.env.graders:grade_episode"
   - id: medium
     name: "Multi-City AQI Coordination"

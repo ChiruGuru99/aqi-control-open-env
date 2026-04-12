@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+# Copyright (c) 2025. AQI Control Environment for OpenEnv.
+# All rights reserved.
+
 def grade_episode(
     task_name: str,
     arrived: bool,
@@ -29,9 +34,6 @@ def grade_episode(
         score = 0.50 * timeliness + 0.30 * safety + 0.20 * efficiency
 
     return round(max(0.01, min(0.99, score)), 4)
-# Copyright (c) 2025. AQI Control Environment for OpenEnv.
-# All rights reserved.
-
 """
 Grader functions for the PM2.5 policy planning tasks.
 
@@ -43,8 +45,6 @@ Terminal score is a transparent weighted sum of:
     - Intervention efficiency
     - For multi-city tasks: City equity (penalizes uneven outcomes)
 """
-
-from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
 
@@ -106,7 +106,7 @@ def _compute_core_metrics(trajectory: List[Dict[str, Any]]) -> Dict[str, float]:
     }
 
 
-def grade_easy(trajectory: List[Dict[str, Any]], **kwargs) -> Tuple[float, Dict[str, Any]]:
+def grade_easy(trajectory: List[Dict[str, Any]], total_days: int) -> Tuple[float, Dict[str, Any]]:
     """Grade Task 1 (Easy): Single city, 30 days.
 
     Scoring:
@@ -137,7 +137,8 @@ def grade_easy(trajectory: List[Dict[str, Any]], **kwargs) -> Tuple[float, Dict[
 
 
 def grade_medium(
-    city_trajectories: Dict[str, List[Dict[str, Any]]], **kwargs) -> Tuple[float, Dict[str, Any]]:
+    city_trajectories: Dict[str, List[Dict[str, Any]]], total_days: int,
+) -> Tuple[float, Dict[str, Any]]:
     """Grade Task 2 (Medium): Multiple cities, includes Diwali.
 
     Scoring:
@@ -187,7 +188,9 @@ def grade_medium(
 
 
 def grade_hard(
-    city_trajectories: Dict[str, List[Dict[str, Any]]], **kwargs) -> Tuple[float, Dict[str, Any]]:
+    city_trajectories: Dict[str, List[Dict[str, Any]]], total_days: int,
+    budget_total: float, budget_spent: float,
+) -> Tuple[float, Dict[str, Any]]:
     """Grade Task 3 (Hard): Multi-city with budget constraints.
 
     Scoring:
