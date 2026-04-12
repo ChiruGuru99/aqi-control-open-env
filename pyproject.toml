@@ -26,8 +26,10 @@ server = "server.app:main"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["env", "server"]
-py-modules = ["models", "client", "inference"]
+packages = ["aqi_control_env", "aqi_control_env.env", "aqi_control_env.server"]
+
+[tool.setuptools.package-dir]
+"aqi_control_env" = "."
 
 [tool.setuptools.package-data]
-"*" = ["data/**/*.json", "openenv.yaml"]
+"aqi_control_env" = ["data/**/*.json", "openenv.yaml"]
