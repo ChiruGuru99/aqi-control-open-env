@@ -32,6 +32,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         uv sync --no-editable; \
     fi
 
+# Note: `uv sync` already builds and installs the project into the
+# builder virtualenv (see uv output). Additional `pip install` here
+# caused failures in some minimal images where the venv lacks the
+# pip module. We rely on `uv sync` to install the package instead.
+
 # Final runtime stage
 FROM ${BASE_IMAGE}
 

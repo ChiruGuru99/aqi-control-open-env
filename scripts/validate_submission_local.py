@@ -43,7 +43,15 @@ def run_ping(ping_url: str) -> bool:
     url = ping_url.rstrip("/") + "/reset"
     log(f"Pinging HF Space {url} ...")
     try:
-        r = requests.post(url, json={}, timeout=30)
+        # If an HF token is provided in the environment, use it for authenticated
+        # pings (private Spaces require a Bearer token).
+        headers = {}
+        token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+            log("  Using HF token for authenticated ping")
+
+        r = requests.post(url, json={}, headers=headers or None, timeout=30)
         log(f"  HTTP {r.status_code}")
         return r.status_code == 200
     except Exception as e:
