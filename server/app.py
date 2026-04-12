@@ -68,7 +68,21 @@ def _startup_diagnostic() -> None:
         traceback.print_exc()
 
 
-app.add_event_handler("startup", _startup_diagnostic)
+try:
+    # Register startup diagnostic in a way that works across different
+    # app factory implementations (some apps expose `add_event_handler`,
+    # others expose the `on_event` decorator). If neither is present,
+    # run the diagnostic immediately as a best-effort fallback so the
+    # deployment logs still contain useful information.
+    if hasattr(app, "add_event_handler"):
+        app.add_event_handler("startup", _startup_diagnostic)
+    elif hasattr(app, "on_event"):
+        app.on_event("startup")(_startup_diagnostic)
+    else:
+        print("DIAGNOSTIC: app has no startup registration API; running diagnostic immediately")
+        _startup_diagnostic()
+except Exception as e:
+    print(f"DIAGNOSTIC: failed to register startup handler: {e}")
 
 
 from fastapi.responses import JSONResponse
