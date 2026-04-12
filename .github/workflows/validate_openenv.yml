@@ -1,0 +1,32 @@
+name: CI: OpenEnv validation
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install package (with inference extras)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[inference]
+
+      - name: Run openenv validate
+        run: python -m openenv.cli validate
+
+      - name: Run grader diagnostic
+        run: python test_grader_scores.py
+
+      - name: Packaging import check
+        run: python scripts/check_packaging.py

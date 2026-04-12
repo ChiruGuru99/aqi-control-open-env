@@ -43,8 +43,14 @@ TRAFFIC_REDUCTION = {0: 0.0, 1: 0.10, 2: 0.22, 3: 0.30}
 CONSTRUCTION_REDUCTION = {0: 0.0, 1: 0.15, 2: 0.30, 3: 0.40}
 INDUSTRY_REDUCTION = {0: 0.0, 1: 0.10, 2: 0.18, 3: 0.25}
 
+# New action types (PM2.5 reduction is indirect / through behaviour change)
+SCHOOL_CLOSURE_REDUCTION = {0: 0.0, 1: 0.02, 2: 0.04, 3: 0.06}  # Reduces vehicular (school buses)
+WFH_REDUCTION = {0: 0.0, 1: 0.05, 2: 0.12, 3: 0.18}  # Reduces vehicular commute
+SMOG_RESPONSE_REDUCTION = {0: 0.0, 1: 0.03, 2: 0.06, 3: 0.10}  # Water sprinklers, anti-smog guns
+TRANSPORT_BAN_REDUCTION = {0: 0.0, 1: 0.08, 2: 0.15, 3: 0.22}  # Heavy vehicle bans
+
 # Hard cap: maximum total PM2.5 reduction in a single day
-MAX_DAILY_REDUCTION_FRAC = 0.30
+MAX_DAILY_REDUCTION_FRAC = 0.35  # Slightly higher with multi-action
 
 # ── Economic cost per day per intervention level ─────────────────────────
 
@@ -54,6 +60,10 @@ BASE_ECONOMIC_COST = {
     "curtail_construction": {0: 0.0, 1: 1.5, 2: 4.0, 3: 8.0},
     "limit_industry": {0: 0.0, 1: 3.0, 2: 6.0, 3: 12.0},
     "issue_public_advisory": {0: 0.5},
+    "close_schools": {0: 0.0, 1: 0.5, 2: 2.0, 3: 4.0},
+    "mandate_wfh": {0: 0.0, 1: 1.0, 2: 3.0, 3: 6.0},
+    "deploy_smog_response": {0: 0.0, 1: 1.5, 2: 3.5, 3: 7.0},
+    "emergency_transport_ban": {0: 0.0, 1: 2.5, 2: 5.5, 3: 11.0},
 }
 
 # ── Policy fatigue parameters ────────────────────────────────────────────
@@ -253,6 +263,37 @@ def apply_intervention(
     elif action_type == "issue_public_advisory":
         reduction_detail["advisory_issued"] = 1.0
 
+    elif action_type == "close_schools":
+        # School closures reduce vehicular PM (school buses, parent drop-offs)
+        raw_reduction = SCHOOL_CLOSURE_REDUCTION.get(level, 0.0)
+        effective_reduction = raw_reduction * effective_compliance
+        vehicular_pm *= (1.0 - effective_reduction)
+        reduction_detail["school_closure_traffic_reduction_pct"] = round(effective_reduction * 100, 1)
+
+    elif action_type == "mandate_wfh":
+        # WFH reduces vehicular commute traffic
+        raw_reduction = WFH_REDUCTION.get(level, 0.0)
+        effective_reduction = raw_reduction * effective_compliance
+        vehicular_pm *= (1.0 - effective_reduction)
+        activity_traffic *= (1.0 - raw_reduction * 0.5)
+        reduction_detail["wfh_traffic_reduction_pct"] = round(effective_reduction * 100, 1)
+
+    elif action_type == "deploy_smog_response":
+        # Smog response (water sprinklers, anti-smog guns) reduces dust/construction
+        raw_reduction = SMOG_RESPONSE_REDUCTION.get(level, 0.0)
+        effective_reduction = raw_reduction * effective_compliance
+        construction_pm *= (1.0 - effective_reduction)
+        background_pm *= (1.0 - effective_reduction * 0.5)  # Also settles some background dust
+        reduction_detail["smog_response_reduction_pct"] = round(effective_reduction * 100, 1)
+
+    elif action_type == "emergency_transport_ban":
+        # Ban on trucks, diesel vehicles, non-essential vehicles
+        raw_reduction = TRANSPORT_BAN_REDUCTION.get(level, 0.0)
+        effective_reduction = raw_reduction * effective_compliance
+        vehicular_pm *= (1.0 - effective_reduction)
+        activity_traffic *= (1.0 - raw_reduction * 0.7)
+        reduction_detail["transport_ban_reduction_pct"] = round(effective_reduction * 100, 1)
+
     # ── Reconstruct total PM2.5 ──────────────────────────────────────────
     post_pm25_raw = (
         vehicular_pm + construction_pm + industrial_pm
@@ -284,6 +325,79 @@ def apply_intervention(
             "industry": round(activity_industry, 2),
         },
         reduction_detail,
+    )
+
+
+def apply_multi_action(
+    base_pm25: float,
+    actions: List[Dict[str, Any]],
+    city_profile: Dict[str, Any],
+    fatigue: float = 0.0,
+    is_weekend: bool = False,
+    wind_regime: str = "normal",
+    festival_flag: bool = False,
+) -> Tuple[float, float, Dict[str, float], Dict[str, float]]:
+    """Apply multiple simultaneous interventions with diminishing returns.
+
+    When multiple actions target the same PM2.5 source (e.g., restrict_traffic
+    and emergency_transport_ban both reduce vehicular), the combined effect
+    has diminishing returns (not purely additive).
+
+    Args:
+        base_pm25: Today's real PM2.5 from CPCB data.
+        actions: List of action dicts, each with 'action_type' and 'level'.
+        city_profile: City-specific scenario parameters.
+        fatigue, is_weekend, wind_regime, festival_flag: As in apply_intervention.
+
+    Returns:
+        (post_pm25, total_economic_cost, activity_levels, reduction_detail)
+    """
+    if not actions:
+        return apply_intervention(
+            base_pm25, "no_action", 0, city_profile,
+            fatigue=fatigue, is_weekend=is_weekend,
+            wind_regime=wind_regime, festival_flag=festival_flag,
+        )
+
+    # Apply each action individually to get marginal costs
+    total_econ = 0.0
+    combined_activities = {"traffic": 1.0, "construction": 1.0, "industry": 1.0}
+    combined_detail = {}
+
+    # Track cumulative PM2.5 — apply each action sequentially to the
+    # *same base* but accumulate reductions with diminishing returns
+    current_pm25 = base_pm25
+    diminishing_factor = 1.0
+
+    for i, act in enumerate(actions):
+        act_type = act.get("action_type", "no_action")
+        act_level = act.get("level", 0)
+
+        post, cost, activities, detail = apply_intervention(
+            current_pm25, act_type, act_level, city_profile,
+            fatigue=fatigue, is_weekend=is_weekend,
+            wind_regime=wind_regime, festival_flag=festival_flag,
+        )
+
+        # Diminishing returns: each subsequent action is less effective
+        reduction = current_pm25 - post
+        effective_reduction = reduction * diminishing_factor
+        current_pm25 = current_pm25 - effective_reduction
+        diminishing_factor *= 0.85  # 15% diminishing returns per additional action
+
+        total_econ += cost
+        for k in combined_activities:
+            combined_activities[k] = min(combined_activities[k], activities.get(k, 1.0))
+        combined_detail.update(detail)
+
+    combined_detail["multi_action_count"] = len(actions)
+    combined_detail["diminishing_returns_applied"] = round(1.0 - diminishing_factor, 3)
+
+    return (
+        round(max(current_pm25, 0), 1),
+        round(total_econ, 2),
+        combined_activities,
+        combined_detail,
     )
 
 

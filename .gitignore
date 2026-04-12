@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+# Exception: we have a package folder named 'env'
+!env/
+!env/*.py
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# OpenEnv / Hackathon Artifacts
+outputs/
+scratch/
+validate-submission.sh.bak
+dashboard/
+.gemini/
+
+# LLM / Cache
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/

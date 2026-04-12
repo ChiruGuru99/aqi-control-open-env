@@ -20,3 +20,13 @@ tasks:
     description: "Three cities, budget-constrained, festival events, fatigue management."
     difficulty: hard
     grader: "aqi_control_env.env.graders:grade_hard"
+  - id: expert
+    name: "Regional Air Quality Command Center"
+    description: "5 cities with GRAP protocol, inter-city pollution transport, health impact optimization (DALYs), public sentiment management. 45-day episode."
+    difficulty: expert
+    grader: "aqi_control_env.env.graders:grade_expert"
+  - id: crisis
+    name: "Airpocalypse Crisis Management"
+    description: "8 cities during unprecedented pollution crisis. Hospital capacity constraints, rolling GRAP Stage IV, public panic. 15-day emergency where every decision counts."
+    difficulty: hard
+    grader: "aqi_control_env.env.graders:grade_crisis"

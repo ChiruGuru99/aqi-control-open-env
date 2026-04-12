@@ -16,7 +16,8 @@
     "notes": "High vehicle density, strong enforcement infra, moderate industrial base",
     "weekend_traffic_factor": 0.82,
     "inversion_prone": true,
-    "festival_sensitivity": 1.2
+    "festival_sensitivity": 1.2,
+    "grap_enabled": true
   },
   "lucknow": {
     "city_name": "Lucknow",
@@ -35,7 +36,8 @@
     "notes": "Significant construction dust, weaker enforcement, growing industrial",
     "weekend_traffic_factor": 0.88,
     "inversion_prone": true,
-    "festival_sensitivity": 1.3
+    "festival_sensitivity": 1.3,
+    "grap_enabled": true
   },
   "patna": {
     "city_name": "Patna",
@@ -54,10 +56,112 @@
     "notes": "Higher industrial share, limited enforcement, biomass burning influence",
     "weekend_traffic_factor": 0.90,
     "inversion_prone": true,
-    "festival_sensitivity": 1.1
+    "festival_sensitivity": 1.1,
+    "grap_enabled": true
+  },
+  "kanpur": {
+    "city_name": "Kanpur",
+    "state": "Uttar Pradesh",
+    "ncap_target_reduction_pct": 40,
+    "ncap_baseline_pm25": 160,
+    "source_shares": {
+      "vehicular": 0.25,
+      "construction": 0.15,
+      "industrial": 0.28,
+      "residential": 0.10,
+      "background": 0.22
+    },
+    "compliance_multiplier": 0.55,
+    "enforcement_capacity": 0.45,
+    "notes": "Extremely polluted, heavy leather/textile industry, weak enforcement",
+    "weekend_traffic_factor": 0.92,
+    "inversion_prone": true,
+    "festival_sensitivity": 1.15,
+    "grap_enabled": true
+  },
+  "chandigarh": {
+    "city_name": "Chandigarh",
+    "state": "Punjab/Haryana",
+    "ncap_target_reduction_pct": 30,
+    "ncap_baseline_pm25": 120,
+    "source_shares": {
+      "vehicular": 0.30,
+      "construction": 0.15,
+      "industrial": 0.10,
+      "residential": 0.15,
+      "background": 0.30
+    },
+    "compliance_multiplier": 0.80,
+    "enforcement_capacity": 0.75,
+    "notes": "Planned city, stubble burning ground zero, high background from agriculture",
+    "weekend_traffic_factor": 0.85,
+    "inversion_prone": true,
+    "festival_sensitivity": 1.25,
+    "grap_enabled": true
+  },
+  "mumbai": {
+    "city_name": "Mumbai",
+    "state": "Maharashtra",
+    "ncap_target_reduction_pct": 30,
+    "ncap_baseline_pm25": 85,
+    "source_shares": {
+      "vehicular": 0.42,
+      "construction": 0.20,
+      "industrial": 0.12,
+      "residential": 0.06,
+      "background": 0.20
+    },
+    "compliance_multiplier": 0.80,
+    "enforcement_capacity": 0.75,
+    "notes": "Coastal sea breeze helps dispersion, vehicle-dominated, massive construction",
+    "weekend_traffic_factor": 0.80,
+    "inversion_prone": false,
+    "festival_sensitivity": 1.35,
+    "grap_enabled": false
+  },
+  "kolkata": {
+    "city_name": "Kolkata",
+    "state": "West Bengal",
+    "ncap_target_reduction_pct": 35,
+    "ncap_baseline_pm25": 110,
+    "source_shares": {
+      "vehicular": 0.30,
+      "construction": 0.18,
+      "industrial": 0.20,
+      "residential": 0.12,
+      "background": 0.20
+    },
+    "compliance_multiplier": 0.65,
+    "enforcement_capacity": 0.55,
+    "notes": "River valley inversions, industrial corridor, thermal power plants nearby",
+    "weekend_traffic_factor": 0.86,
+    "inversion_prone": true,
+    "festival_sensitivity": 1.4,
+    "grap_enabled": false
+  },
+  "bengaluru": {
+    "city_name": "Bengaluru",
+    "state": "Karnataka",
+    "ncap_target_reduction_pct": 25,
+    "ncap_baseline_pm25": 55,
+    "source_shares": {
+      "vehicular": 0.40,
+      "construction": 0.25,
+      "industrial": 0.08,
+      "residential": 0.07,
+      "background": 0.20
+    },
+    "compliance_multiplier": 0.82,
+    "enforcement_capacity": 0.78,
+    "notes": "Cleanest baseline, rapid urbanization, construction dust dominant, IT hub",
+    "weekend_traffic_factor": 0.78,
+    "inversion_prone": false,
+    "festival_sensitivity": 1.1,
+    "grap_enabled": false
   },
   "_meta": {
     "description": "Per-city scenario parameters for the AQI Control Environment. Source shares are configurable scenario parameters, not empirical claims. Compliance multiplier (0-1) models how effectively interventions translate to real-world reductions. Festival sensitivity scales PM2.5 amplification during Diwali/events.",
-    "source": "Simplified profiles inspired by CPCB/NCAP city reports. Not empirical source-apportionment data."
+    "source": "Simplified profiles inspired by CPCB/NCAP city reports. Not empirical source-apportionment data.",
+    "grap_enabled_note": "GRAP protocol is formally mandated only for NCR and extends to some IGP cities. Other cities use local emergency protocols."
   }
 }
