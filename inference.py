@@ -202,17 +202,28 @@ def run_episode(task_id: str) -> None:
             if done or error:
                 break
         
-        # Scoring Mandate: Return score in [0, 1]
-        # We prefer the programmatic grader score if available
+        # Scoring Mandate: Return score strictly in (0, 1) to satisfy validator
+        EPS = 0.005
+        MAX_POSSIBLE_SCORE = 100.0  # Heuristic for a high-performing run
+        
         meta = obs.get("metadata", {})
         grader_scores = meta.get("grader_scores", {})
         
         if task_id in grader_scores:
-            final_score = float(grader_scores[task_id])
+            # Use grader-provided score (expected in [0,1]) but map it
+            # linearly into (EPS, 1-EPS) to avoid exact 0.0/1.0 values.
+            raw = float(grader_scores[task_id])
+            final_score = raw * (1.0 - 2.0 * EPS) + EPS
         else:
-            # Fallback heuristic: cumulative reward normalized
-            cumulative = sum(rewards)
-            final_score = max(0.0, min(1.0, (cumulative + 10) / 100)) # Simple clamp
+            # Fallback: map cumulative episode reward into (0,1) using a
+            # smooth tanh mapping. This preserves ordering and gives an RL-
+            # meaningful monotonic score rather than an arbitrary clamp.
+            import math
+            total = sum(rewards)
+            scale = MAX_POSSIBLE_SCORE / 2.0 if MAX_POSSIBLE_SCORE > 0 else 1.0
+            z = total / scale
+            norm = 0.5 * (1.0 + math.tanh(z))
+            final_score = norm * (1.0 - 2.0 * EPS) + EPS
             
         success = final_score >= SUCCESS_SCORE_THRESHOLD
 
