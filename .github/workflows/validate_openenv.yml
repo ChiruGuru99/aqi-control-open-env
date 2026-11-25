@@ -1,4 +1,4 @@
-name: CI: OpenEnv validation
+name: "CI: OpenEnv validation"
 
 on:
   push:
