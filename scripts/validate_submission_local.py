@@ -5,7 +5,7 @@ Runs feasible checks locally:
  - optional HF Space ping to /reset (if ping_url provided)
  - optional Docker build (if `docker` present)
  - `python -m openenv.cli validate`
- - run `test_grader_scores.py`
+ - run `pytest -q tests/`
 
 Usage:
   python scripts/validate_submission_local.py [--ping-url <url>] [--run-inference]
@@ -115,19 +115,19 @@ def run_openenv_validate(repo_dir: str) -> bool:
         return False
 
 
-def run_test_grader_scores(repo_dir: str) -> bool:
-    log("Running test_grader_scores.py ...")
+def run_pytest(repo_dir: str) -> bool:
+    log("Running pytest -q tests/ ...")
     try:
-        cmd = [sys.executable, "test_grader_scores.py"]
+        cmd = [sys.executable, "-m", "pytest", "-q", "tests/"]
         p = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_dir)
-        log(f"test_grader_scores.py RC: {p.returncode}")
+        log(f"pytest RC: {p.returncode}")
         if p.stdout:
             print(p.stdout)
         if p.stderr:
             print(p.stderr, file=sys.stderr)
         return p.returncode == 0
     except Exception as e:
-        log(f"test_grader_scores.py error: {e}")
+        log(f"pytest error: {e}")
         return False
 
 
@@ -192,12 +192,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         log("openenv validate PASSED")
 
     # Step 4: run grader diagnostic
-    ok = run_test_grader_scores(repo_dir)
+    ok = run_pytest(repo_dir)
     if not ok:
-        log("test_grader_scores.py FAILED")
+        log("pytest FAILED")
         overall_ok = False
     else:
-        log("test_grader_scores.py PASSED")
+        log("pytest PASSED")
 
     # Optional: run inference
     if args.run_inference:
