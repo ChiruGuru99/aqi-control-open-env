@@ -197,6 +197,30 @@ class GRAPTracker:
     def get_days_at_stage(self, city: str) -> int:
         return self._days_at_stage.get(city, 0)
 
+    def snapshot_city(
+        self,
+        city: str,
+    ) -> Tuple[int, int, List[Dict[str, Any]]]:
+        """Capture one city's transition state for transactional action checks."""
+        return (
+            self._current_stage.get(city, 0),
+            self._days_at_stage.get(city, 0),
+            [dict(entry) for entry in self._transition_log.get(city, [])],
+        )
+
+    def restore_city(
+        self,
+        city: str,
+        snapshot: Tuple[int, int, List[Dict[str, Any]]],
+    ) -> None:
+        """Restore a previously captured city state after action rejection."""
+        stage, days, transition_log = snapshot
+        self._current_stage[city] = stage
+        self._days_at_stage[city] = days
+        self._transition_log[city] = [
+            dict(entry) for entry in transition_log
+        ]
+
     def update(
         self, city: str, requested_stage: Optional[int], pm25: float, day: int,
     ) -> Tuple[int, str]:

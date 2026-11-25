@@ -236,6 +236,7 @@ class AQIControlEnvironment(Environment):
         self._health_tracker: Optional[HealthTracker] = None
         self._sentiment_tracker: Optional[SentimentTracker] = None
         self._grap_compliance_scores: List[float] = []
+        self._last_grap_alignment: Optional[float] = None
 
         # Per-city last day PM2.5 for sentiment change tracking
         self._last_pm25: Dict[str, float] = {}
@@ -295,6 +296,7 @@ class AQIControlEnvironment(Environment):
         self._last_reward_breakdown = {}
         self._grader_scores = {}
         self._grap_compliance_scores = []
+        self._last_grap_alignment = None
         self._last_pm25 = {c: 100 for c in config["cities"]}
 
         # ── Initialize advanced subsystems ───────────────────────────────
@@ -356,12 +358,12 @@ class AQIControlEnvironment(Environment):
         """
         # 1. GRAP stage takes precedence
         if action.grap_stage is not None:
-            effective_stage = action.grap_stage
-            if self._grap_tracker is not None:
-                day_data = self._city_data.get(city, [{}])
-                day_idx = max(0, self._current_day - 1)
-                pm25 = day_data[day_idx]["pm25"] if day_idx < len(day_data) else 100
+            effective_stage = max(0, min(4, int(action.grap_stage)))
+            day_data = self._city_data.get(city, [{}])
+            day_idx = max(0, self._current_day - 1)
+            pm25 = day_data[day_idx]["pm25"] if day_idx < len(day_data) else 100
 
+            if self._grap_tracker is not None:
                 effective_stage, _ = self._grap_tracker.update(
                     city, action.grap_stage, pm25, self._current_day
                 )
@@ -372,19 +374,33 @@ class AQIControlEnvironment(Environment):
                     recommended, effective_stage, pm25
                 )
                 self._grap_compliance_scores.append(compliance_score)
+            else:
+                recommended = get_recommended_grap_stage(pm25)
+                compliance_score, _ = compute_grap_compliance_score(
+                    recommended, effective_stage, pm25
+                )
 
+            self._last_grap_alignment = max(
+                0.0, min(1.0, (compliance_score + 3.0) / 5.0)
+            )
             actions_list = expand_grap_stage(effective_stage)
             return actions_list if actions_list else [{"action_type": "no_action", "level": 0}]
 
         # 2. Multi-action bundle
         if action.actions:
             return [
-                {"action_type": a.action_type, "level": a.level}
+                {
+                    "action_type": a.action_type,
+                    "level": max(0, min(3, int(a.level))),
+                }
                 for a in action.actions
             ]
 
         # 3. Legacy single action
-        return [{"action_type": action.action_type, "level": action.level}]
+        return [{
+            "action_type": action.action_type,
+            "level": max(0, min(3, int(action.level))),
+        }]
 
     @staticmethod
     def _counterfactual_pm25(
@@ -426,9 +442,15 @@ class AQIControlEnvironment(Environment):
         config = TASK_CONFIGS[self._task_id]
         cities = config["cities"]
 
-        target_city = action.city.lower() if action.city else self._primary_city
-        if target_city not in cities:
+        requested_city = action.city.lower() if action.city else self._primary_city
+        invalid_city_error = ""
+        if requested_city not in cities:
+            invalid_city_error = (
+                f"Invalid city '{action.city}'; action rejected as no_action."
+            )
             target_city = self._primary_city
+        else:
+            target_city = requested_city
 
         day_idx = self._current_day - 1
 
@@ -443,7 +465,18 @@ class AQIControlEnvironment(Environment):
             weather_info = self._weather_engine.advance_day(self._current_day, base_winds)
 
         # ── Resolve actions for target city ───────────────────────────────
-        resolved_actions = self._resolve_actions(action, target_city)
+        self._last_grap_alignment = None
+        grap_snapshot = (
+            self._grap_tracker.snapshot_city(target_city)
+            if self._grap_tracker is not None
+            else None
+        )
+        compliance_score_count = len(self._grap_compliance_scores)
+        resolved_actions = (
+            [{"action_type": "no_action", "level": 0}]
+            if invalid_city_error
+            else self._resolve_actions(action, target_city)
+        )
 
         total_reward = 0.0
         total_health = 0.0
