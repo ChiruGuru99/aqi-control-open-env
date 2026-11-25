@@ -384,6 +384,28 @@ class AQIControlEnvironment(Environment):
         # 3. Legacy single action
         return [{"action_type": action.action_type, "level": action.level}]
 
+    @staticmethod
+    def _counterfactual_pm25(
+        pm25_input: float,
+        city_profile: Dict[str, Any],
+        fatigue: float,
+        is_weekend: bool,
+        wind_regime: str,
+        festival_flag: bool,
+    ) -> float:
+        """Compute same-day PM2.5 under no_action and identical dynamics."""
+        pm25_base, _, _, _ = apply_intervention(
+            pm25_input,
+            "no_action",
+            0,
+            city_profile,
+            fatigue=fatigue,
+            is_weekend=is_weekend,
+            wind_regime=wind_regime,
+            festival_flag=festival_flag,
+        )
+        return pm25_base
+
     def step(
         self,
         action: AQIAction,
@@ -497,6 +519,15 @@ class AQIControlEnvironment(Environment):
 
             fatigue_current = self._fatigue_levels[city]
             city_profile = self._city_profiles.get(city, {})
+            pm25_input = base_pm25
+            pm25_base = self._counterfactual_pm25(
+                pm25_input,
+                city_profile,
+                fatigue_current,
+                is_weekend,
+                wind_regime,
+                festival_flag,
+            )
 
             # Check for forced reversal from sentiment
             reversal_forced = False
@@ -578,7 +609,8 @@ class AQIControlEnvironment(Environment):
             self._last_pm25[city] = post_pm25
             self._trajectories[city].append({
                 "day": self._current_day,
-                "pm25_base": base_pm25,
+                "pm25_input": pm25_input,
+                "pm25_base": pm25_base,
                 "pm25_post": post_pm25,
                 "action_type": max_act["action_type"],
                 "level": max_act.get("level", 0),
