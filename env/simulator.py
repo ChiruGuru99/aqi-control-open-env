@@ -23,6 +23,7 @@ Key features:
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -421,12 +422,13 @@ def compute_daily_reward(
     fatigue: float = 0.0,
     city_equity_penalty: float = 0.0,
     acted_on_forecast: bool = False,
+    grap_alignment: float | None = None,
 ) -> Tuple[float, Dict[str, float]]:
     """Compute the composite daily reward with transparent breakdown.
 
     Components:
-        1. Health cost: penalty tied to NAAQS 24hr standard (60 ug/m3)
-        2. Economic cost: penalty for economic disruption
+        1. Counterfactual PM2.5 improvement, cost-effectiveness, and GRAP fit
+        2. Economic disruption is represented through the efficiency ratio
         3. Policy quality: bonus/penalty for appropriate/inappropriate action
         4. Fatigue penalty: additional cost for fatigued interventions
         5. Equity penalty: penalty for ignoring cities (multi-city tasks)
@@ -437,19 +439,31 @@ def compute_daily_reward(
     """
     breakdown: Dict[str, float] = {}
 
-    # ── 1. Health cost (tied to NAAQS 60 ug/m3) ─────────────────────────
-    if pm25_post > NAAQS_PM25_24HR:
-        health_cost = -(pm25_post - NAAQS_PM25_24HR) * 0.1
-    else:
-        health_cost = 1.0  # bonus for staying below standard
-    # Advisory gives health benefit even without AQI change
-    if action_type == "issue_public_advisory" and pm25_post > NAAQS_PM25_24HR:
-        health_cost += 0.5
-    breakdown["health_cost"] = round(health_cost, 2)
-
-    # ── 2. Economic cost ─────────────────────────────────────────────────
-    econ_penalty = -economic_cost
-    breakdown["economic_cost"] = round(econ_penalty, 2)
+    # Dense reward mirrors the terminal direction: fractional counterfactual
+    # improvement, double severe-day credit, bounded cost-effectiveness, and
+    # protocol alignment. No action is neutral rather than free positive AQI.
+    health_benefit = max(0.0, base_pm25 - pm25_post)
+    reduction_fraction = health_benefit / max(1.0, base_pm25)
+    severe_multiplier = 2.0 if base_pm25 > 250 else 1.0
+    cost_efficiency = (
+        1.0 + math.tanh(health_benefit / economic_cost)
+        if economic_cost > 0
+        else 0.0
+    )
+    alignment_multiplier = (
+        grap_alignment
+        if grap_alignment is not None
+        else 1.0
+    )
+    health_cost = (
+        reduction_fraction
+        * severe_multiplier
+        * cost_efficiency
+        * alignment_multiplier
+    )
+    breakdown["health_cost"] = round(health_cost, 6)
+    econ_penalty = 0.0
+    breakdown["economic_cost"] = 0.0
 
     # ── 3. Policy quality ────────────────────────────────────────────────
     policy_bonus = 0.0
@@ -487,10 +501,10 @@ def compute_daily_reward(
         forecast_bonus = 0.5
     breakdown["forecast_bonus"] = round(forecast_bonus, 2)
 
-    total = (
-        health_cost + econ_penalty + policy_bonus
-        + fatigue_penalty - city_equity_penalty + forecast_bonus
-    )
+    # Policy, fatigue, equity, and forecast fields remain transparent
+    # diagnostics, but mixing their arbitrary unit scales into the dense
+    # counterfactual signal reverses terminal-policy ordering.
+    total = health_cost
 
     return round(total, 2), breakdown
 

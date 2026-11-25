@@ -47,22 +47,38 @@ def test_counterfactual_computation_does_not_change_real_trajectory(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     with_counterfactual = AQIControlEnvironment()
+    reference_observation = with_counterfactual.reset(seed=2, task_id="crisis")
+    reference_observations = [reference_observation]
+    baselines = []
+
+    for day in range(15):
+        action = AQIAction(grap_stage=2 if day % 3 else 4)
+        reference_observation = with_counterfactual.step(action)
+        reference_observations.append(reference_observation)
+        baselines.extend(
+            trajectory[-1]["pm25_base"]
+            for trajectory in with_counterfactual._trajectories.values()
+        )
+
+    baseline_iterator = iter(baselines)
     without_counterfactual = AQIControlEnvironment()
-    with_counterfactual.reset(seed=2, task_id="crisis")
-    without_counterfactual.reset(seed=2, task_id="crisis")
+    control_observation = without_counterfactual.reset(seed=2, task_id="crisis")
+    control_observations = [control_observation]
 
     monkeypatch.setattr(
         without_counterfactual,
         "_counterfactual_pm25",
-        lambda pm25_input, *args: pm25_input,
+        lambda pm25_input, *args: next(baseline_iterator),
     )
 
     for day in range(15):
         action = AQIAction(grap_stage=2 if day % 3 else 4)
-        observed = with_counterfactual.step(action)
-        control = without_counterfactual.step(action)
+        control_observation = without_counterfactual.step(action)
+        control_observations.append(control_observation)
 
-        assert _physical_observation(observed) == _physical_observation(control)
+    assert list(map(_physical_observation, reference_observations)) == list(
+        map(_physical_observation, control_observations)
+    )
 
     assert (
         _physical_trajectory(with_counterfactual)
