@@ -578,6 +578,29 @@ class AQIControlEnvironment(Environment):
                 wind_regime=wind_regime,
                 festival_flag=festival_flag,
             )
+            budget_limited = False
+            if (
+                self._budget_total > 0
+                and self._budget_spent + econ_cost > self._budget_total
+            ):
+                # Budget is a feasibility constraint: an unaffordable bundle
+                # becomes same-day no-action instead of reserving no resources
+                # and being rewarded for an intervention it cannot fund.
+                city_actions = [{"action_type": "no_action", "level": 0}]
+                post_pm25, econ_cost, activities, red_details = apply_multi_action(
+                    base_pm25,
+                    city_actions,
+                    city_profile,
+                    fatigue=fatigue_current,
+                    is_weekend=is_weekend,
+                    wind_regime=wind_regime,
+                    festival_flag=festival_flag,
+                )
+                budget_limited = True
+                if self._grap_tracker is not None and grap_snapshot is not None:
+                    self._grap_tracker.restore_city(target_city, grap_snapshot)
+                    del self._grap_compliance_scores[compliance_score_count:]
+                    self._last_grap_alignment = None
 
             # Determine highest-level action for fatigue tracking
             max_act = max(city_actions, key=lambda a: a.get("level", 0)) if city_actions else {"action_type": "no_action", "level": 0}
@@ -630,7 +653,10 @@ class AQIControlEnvironment(Environment):
 
             if reversal_forced:
                 breakdown["forced_reversal_penalty"] = -3.0
-                reward -= 3.0
+            if budget_limited:
+                breakdown["budget_rejected_action"] = 1.0
+            if invalid_city_error and city == self._primary_city:
+                breakdown["invalid_city_action"] = 1.0
 
             if self._budget_total > 0:
                 self._budget_spent += econ_cost
@@ -670,6 +696,10 @@ class AQIControlEnvironment(Environment):
             day_message_parts.append(
                 f"{city.title()}: {day_data['pm25']}→{post_pm25} ({aqi_cat})"
             )
+            if budget_limited:
+                day_message_parts.append(
+                    f"  {city.title()}: action rejected; insufficient budget"
+                )
 
             # Add health info to message on advanced tasks
             if health_data and health_data.get("admissions"):
@@ -695,6 +725,8 @@ class AQIControlEnvironment(Environment):
             self._run_graders()
 
         msg_parts = [f"Day {self._current_day}/{self._total_days}"]
+        if invalid_city_error:
+            msg_parts.append(invalid_city_error)
         msg_parts.extend(day_message_parts)
         if self._budget_total > 0:
             remaining = self._budget_total - self._budget_spent
