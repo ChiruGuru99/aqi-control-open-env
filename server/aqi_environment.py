@@ -594,11 +594,16 @@ class AQIControlEnvironment(Environment):
 
             # Compute reward
             reward, breakdown = compute_daily_reward(
-                post_pm25, econ_cost, base_pm25,
+                post_pm25, econ_cost, pm25_base,
                 max_act["action_type"], max_act.get("level", 0), event,
                 fatigue=fatigue_current,
                 city_equity_penalty=equity_penalty if city == self._primary_city else 0.0,
                 acted_on_forecast=acted_on_forc,
+                grap_alignment=(
+                    self._last_grap_alignment
+                    if city == target_city
+                    else None
+                ),
             )
 
             # ── Health tracking ──────────────────────────────────────────
@@ -620,10 +625,8 @@ class AQIControlEnvironment(Environment):
                 sent = sentiment_data.get("sentiment", 0.5)
                 if sent < 0.3:
                     breakdown["sentiment_penalty"] = round(-(0.3 - sent) * 2.0, 2)
-                    reward += breakdown["sentiment_penalty"]
                 elif sent > 0.7:
                     breakdown["sentiment_bonus"] = round((sent - 0.7) * 0.5, 2)
-                    reward += breakdown["sentiment_bonus"]
 
             if reversal_forced:
                 breakdown["forced_reversal_penalty"] = -3.0
@@ -648,6 +651,11 @@ class AQIControlEnvironment(Environment):
                 "economic_cost": econ_cost,
                 "health_cost": breakdown["health_cost"],
                 "event": event,
+                "grap_alignment": (
+                    self._last_grap_alignment
+                    if city == target_city
+                    else None
+                ),
             })
 
             total_reward += reward
