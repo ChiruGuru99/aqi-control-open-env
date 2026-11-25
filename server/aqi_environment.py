@@ -253,7 +253,7 @@ class AQIControlEnvironment(Environment):
         """Reset the environment for a new episode."""
         eid = episode_id or str(uuid4())
         self._state = State(episode_id=eid, step_count=0)
-        self._seed = seed or 42
+        self._seed = 42 if seed is None else seed
 
         self._task_id = kwargs.get("task_id", "easy")
         if self._task_id not in TASK_CONFIGS:
@@ -355,23 +355,25 @@ class AQIControlEnvironment(Environment):
             3. Legacy single action (backward compatible)
         """
         # 1. GRAP stage takes precedence
-        if action.grap_stage is not None and self._grap_tracker is not None:
-            day_data = self._city_data.get(city, [{}])
-            day_idx = max(0, self._current_day - 1)
-            pm25 = day_data[day_idx]["pm25"] if day_idx < len(day_data) else 100
+        if action.grap_stage is not None:
+            effective_stage = action.grap_stage
+            if self._grap_tracker is not None:
+                day_data = self._city_data.get(city, [{}])
+                day_idx = max(0, self._current_day - 1)
+                pm25 = day_data[day_idx]["pm25"] if day_idx < len(day_data) else 100
 
-            effective_stage, msg = self._grap_tracker.update(
-                city, action.grap_stage, pm25, self._current_day
-            )
+                effective_stage, _ = self._grap_tracker.update(
+                    city, action.grap_stage, pm25, self._current_day
+                )
+
+                # Score GRAP compliance on tasks that track protocol state.
+                recommended = get_recommended_grap_stage(pm25)
+                compliance_score, _ = compute_grap_compliance_score(
+                    recommended, effective_stage, pm25
+                )
+                self._grap_compliance_scores.append(compliance_score)
+
             actions_list = expand_grap_stage(effective_stage)
-
-            # Score GRAP compliance
-            recommended = get_recommended_grap_stage(pm25)
-            compliance_score, _ = compute_grap_compliance_score(
-                recommended, effective_stage, pm25
-            )
-            self._grap_compliance_scores.append(compliance_score)
-
             return actions_list if actions_list else [{"action_type": "no_action", "level": 0}]
 
         # 2. Multi-action bundle
@@ -394,10 +396,9 @@ class AQIControlEnvironment(Environment):
         festival_flag: bool,
     ) -> float:
         """Compute same-day PM2.5 under no_action and identical dynamics."""
-        pm25_base, _, _, _ = apply_intervention(
+        pm25_base, _, _, _ = apply_multi_action(
             pm25_input,
-            "no_action",
-            0,
+            [{"action_type": "no_action", "level": 0}],
             city_profile,
             fatigue=fatigue,
             is_weekend=is_weekend,
@@ -535,20 +536,15 @@ class AQIControlEnvironment(Environment):
                 reversal_forced = True
                 city_actions = [{"action_type": "no_action", "level": 0}]
 
-            # Apply actions (multi-action if >1)
-            if len(city_actions) > 1:
-                post_pm25, econ_cost, activities, red_details = apply_multi_action(
-                    base_pm25, city_actions, city_profile,
-                    fatigue=fatigue_current, is_weekend=is_weekend,
-                    wind_regime=wind_regime, festival_flag=festival_flag,
-                )
-            else:
-                act = city_actions[0] if city_actions else {"action_type": "no_action", "level": 0}
-                post_pm25, econ_cost, activities, red_details = apply_intervention(
-                    base_pm25, act["action_type"], act.get("level", 0), city_profile,
-                    fatigue=fatigue_current, is_weekend=is_weekend,
-                    wind_regime=wind_regime, festival_flag=festival_flag,
-                )
+            post_pm25, econ_cost, activities, red_details = apply_multi_action(
+                base_pm25,
+                city_actions,
+                city_profile,
+                fatigue=fatigue_current,
+                is_weekend=is_weekend,
+                wind_regime=wind_regime,
+                festival_flag=festival_flag,
+            )
 
             # Determine highest-level action for fatigue tracking
             max_act = max(city_actions, key=lambda a: a.get("level", 0)) if city_actions else {"action_type": "no_action", "level": 0}
@@ -608,6 +604,7 @@ class AQIControlEnvironment(Environment):
             self._pm25_histories[city].append(post_pm25)
             self._last_pm25[city] = post_pm25
             self._trajectories[city].append({
+                **breakdown,
                 "day": self._current_day,
                 "pm25_input": pm25_input,
                 "pm25_base": pm25_base,
@@ -618,7 +615,6 @@ class AQIControlEnvironment(Environment):
                 "economic_cost": econ_cost,
                 "health_cost": breakdown["health_cost"],
                 "event": event,
-                **breakdown,
             })
 
             total_reward += reward

@@ -359,28 +359,38 @@ def apply_multi_action(
             wind_regime=wind_regime, festival_flag=festival_flag,
         )
 
-    # Apply each action individually to get marginal costs
+    # Apply exogenous dynamics once, then measure each intervention relative
+    # to the same no-action counterfactual. This prevents multi-action bundles
+    # from repeatedly applying wind, weekend, and festival modifiers.
+    counterfactual_pm25, _, _, _ = apply_intervention(
+        base_pm25,
+        "no_action",
+        0,
+        city_profile,
+        fatigue=fatigue,
+        is_weekend=is_weekend,
+        wind_regime=wind_regime,
+        festival_flag=festival_flag,
+    )
+
+    # Apply each action individually to get marginal reductions and costs.
     total_econ = 0.0
     combined_activities = {"traffic": 1.0, "construction": 1.0, "industry": 1.0}
     combined_detail = {}
-
-    # Track cumulative PM2.5 — apply each action sequentially to the
-    # *same base* but accumulate reductions with diminishing returns
-    current_pm25 = base_pm25
+    current_pm25 = counterfactual_pm25
     diminishing_factor = 1.0
 
-    for i, act in enumerate(actions):
+    for act in actions:
         act_type = act.get("action_type", "no_action")
         act_level = act.get("level", 0)
 
         post, cost, activities, detail = apply_intervention(
-            current_pm25, act_type, act_level, city_profile,
+            base_pm25, act_type, act_level, city_profile,
             fatigue=fatigue, is_weekend=is_weekend,
             wind_regime=wind_regime, festival_flag=festival_flag,
         )
 
-        # Diminishing returns: each subsequent action is less effective
-        reduction = current_pm25 - post
+        reduction = counterfactual_pm25 - post
         effective_reduction = reduction * diminishing_factor
         current_pm25 = current_pm25 - effective_reduction
         diminishing_factor *= 0.85  # 15% diminishing returns per additional action
